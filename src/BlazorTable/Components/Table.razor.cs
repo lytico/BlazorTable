@@ -128,7 +128,8 @@ namespace BlazorTable
         /// <summary>
         /// Is Table in Edit mode
         /// </summary>
-        public bool IsEditMode { get; private set; }
+        [Parameter]
+        public bool IsEditMode { get; set; }
 
         /// <summary>
         /// Total Pages
