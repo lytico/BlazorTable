@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Components;
 using System;
 using System.Linq.Expressions;
+using System.Threading.Tasks;
 
 namespace BlazorTable
 {
@@ -36,6 +37,11 @@ namespace BlazorTable
         bool Filterable { get; set; }
 
         /// <summary>
+        /// Column can be hidden
+        /// </summary>
+        bool Hideable { get; set; }
+
+        /// <summary>
         /// Set the format for values if no template
         /// </summary>
         string Format { get; set; }
@@ -46,6 +52,12 @@ namespace BlazorTable
         bool FilterOpen { get; }
 
         /// <summary>
+        /// Column visibility
+        /// True if current column is visible else false.
+        /// </summary>
+        bool Visible { get; set; }
+
+        /// <summary>
         /// Opens/Closes the Filter Panel
         /// </summary>
         void ToggleFilter();
@@ -53,7 +65,7 @@ namespace BlazorTable
         /// <summary>
         /// Sort by this column
         /// </summary>
-        void SortBy();
+        Task SortByAsync();
 
         /// <summary>
         /// Column Data Type
@@ -83,6 +95,11 @@ namespace BlazorTable
         RenderFragment<TableItem> Template { get; set; }
 
         /// <summary>
+        /// Set custom Footer column value 
+        /// </summary>
+        string SetFooterValue { get; set; }
+
+        /// <summary>
         /// Currently applied Filter Control
         /// </summary>
         IFilter<TableItem> FilterControl { get; set; }
@@ -103,9 +120,19 @@ namespace BlazorTable
         bool SortDescending { get; set; }
 
         /// <summary>
+        /// ARIA sort value, if any
+        /// </summary>
+        string AriaSort => SortColumn ? (SortDescending ? "descending" : "ascending") : null;
+
+        /// <summary>
         /// Horizontal alignment
         /// </summary>
         Align Align { get; set; }
+
+        /// <summary>
+        /// Aggregates table column for the footer. It can only be applied to numerical fields (e.g. int, long decimal, double, etc.).
+        /// </summary>
+        AggregateType? Aggregate { get; set; }
 
         /// <summary>
         /// Filter Icon Element
@@ -118,6 +145,11 @@ namespace BlazorTable
         string Class { get; set; }
 
         /// <summary>
+        /// Column Footer CSS Class
+        /// </summary>
+        string ColumnFooterClass { get; set; }
+
+        /// <summary>
         /// True if this is the default Sort Column
         /// </summary>
         bool? DefaultSortColumn { get; set; }
@@ -126,6 +158,13 @@ namespace BlazorTable
         /// Direction of default sorting
         /// </summary>
         bool? DefaultSortDescending { get; set; }
+
+
+        /// <summary>
+        /// Returns aggregation of this column for the table footer based on given type: Sum, Average, Count, Min, or Max.
+        /// </summary>
+        /// <returns>string results</returns>
+        string GetFooterValue();
 
         /// <summary>
         /// Default render if no Template specified

@@ -1,4 +1,5 @@
-﻿
+﻿using System.Threading.Tasks;
+
 namespace BlazorTable
 {
     /// <summary>
@@ -36,25 +37,26 @@ namespace BlazorTable
         /// </summary>
         bool IsEditMode { get; }
 
+
         /// <summary>
-        /// Go to First Page
+        /// Go to First Page Async
         /// </summary>
-        void FirstPage();
+        Task FirstPageAsync();
 
         /// <summary>
         /// Go to Next Page
         /// </summary>
-        void NextPage();
+        Task NextPageAsync();
 
         /// <summary>
         /// Go to Previous Page
         /// </summary>
-        void PreviousPage();
+        Task PreviousPageAsync();
 
         /// <summary>
         /// Go to Last Page
         /// </summary>
-        void LastPage();
+        Task LastPageAsync();
 
         /// <summary>
         /// Redraws the Table using EditTemplate instead of Template
@@ -84,7 +86,19 @@ namespace BlazorTable
         /// <summary>
         /// Gets Data and redraws the Table
         /// </summary>
-        void Update();
+        Task UpdateAsync();
+        /// <summary>
+        /// Open/Close detail view in specified row.
+        /// </summary>
+        /// <param name="row">number of row to toggle detail view</param>
+        /// <param name="open">true for openening detail view, false for closing detail view</param>
+        void ToggleDetailView(int row, bool open);
+
+        /// <summary>
+        /// Open/Close all detail views.
+        /// </summary>
+        /// <param name="open">true for openening detail view, false for closing detail view</param>
+        void ToggleAllDetailsView(bool open);
 
         /// <summary>
         /// Set the EmptyDataTemplate for the table
@@ -97,6 +111,7 @@ namespace BlazorTable
         /// </summary>
         /// <param name="template"></param>
         void SetLoadingDataTemplate(LoadingDataTemplate template);
+
 
         /// <summary>
         /// Select Type: None, Single or Multiple
@@ -112,5 +127,16 @@ namespace BlazorTable
         /// Shows Search Bar above the table
         /// </summary>
         bool ShowSearchBar { get; set; }
+
+        /// <summary>
+        /// Show or hide table footer. Hide by default.
+        /// </summary>
+        bool ShowFooter { get; set; }
+      
+        /// <summary>
+        /// Set Table Page Size
+        /// </summary>
+        /// <param name="pageSize"></param>
+        Task SetPageSizeAsync(int pageSize);
     }
 }

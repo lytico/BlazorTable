@@ -1,10 +1,15 @@
 ﻿using LinqKit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Text;
+using System.Threading.Tasks;
+using BlazorTable.Components.ServerSide;
+using BlazorTable.Interfaces;
 
 namespace BlazorTable
 {
@@ -34,10 +39,16 @@ namespace BlazorTable
         public string TableBodyClass { get; set; } = "";
 
         /// <summary>
+        /// Table Footer Class
+        /// </summary>
+        [Parameter]
+        public string TableFooterClass { get; set; } = "text-white bg-secondary";
+
+        /// <summary>
         /// Expression to set Row Class
         /// </summary>
         [Parameter]
-        public Expression<Func<TableItem, string>> TableRowClass { get; set; }
+        public Func<TableItem, string> TableRowClass { get; set; }
 
         /// <summary>
         /// Page Size, defaults to 15
@@ -67,6 +78,12 @@ namespace BlazorTable
         public IEnumerable<TableItem> Items { get; set; }
 
         /// <summary>
+        /// Service to use to query data server side
+        /// </summary>
+        [Parameter]
+        public IDataLoader<TableItem> DataLoader { get; set; }
+
+        /// <summary>
         /// Search all columns for the specified string, supports spaces as a delimiter
         /// </summary>
         [Parameter]
@@ -74,6 +91,19 @@ namespace BlazorTable
 
         [Inject]
         private ILogger<ITable<TableItem>> Logger { get; set; }
+
+        [Inject]
+        IStringLocalizer<Localization.Localization> Localization { get; set; }
+
+        /// <summary>
+        /// Ref to visibility menu icon for popover display
+        /// </summary>
+        private ElementReference VisibilityMenuIconRef { get; set; }
+
+        /// <summary>
+        /// True if visibility menu is open otherwise false
+        /// </summary>
+        private bool VisibilityMenuOpen { get; set; }
 
         /// <summary>
         /// Collection of filtered items
@@ -105,76 +135,129 @@ namespace BlazorTable
         /// </summary>
         public int TotalPages => PageSize <= 0 ? 1 : (TotalCount + PageSize - 1) / PageSize;
 
-        protected override void OnParametersSet()
+        /// <summary>
+        /// Custom Rows
+        /// </summary>
+        private List<CustomRow<TableItem>> CustomRows { get; set; } = new List<CustomRow<TableItem>>();
+
+        protected override async Task OnParametersSetAsync()
         {
-            Update();
+            await UpdateAsync().ConfigureAwait(false);
         }
 
         private IEnumerable<TableItem> GetData()
         {
-            if (Items != null || ItemsQueryable != null)
+            if (Items == null && ItemsQueryable == null)
             {
-                if (Items != null)
-                {
-                    ItemsQueryable = Items.AsQueryable();
-                }
-
-                foreach (var item in Columns)
-                {
-                    if (item.Filter != null)
-                    {
-                        ItemsQueryable = ItemsQueryable.Where(item.Filter);
-                    }
-                }
-
-                // Global Search
-                if (!string.IsNullOrEmpty(GlobalSearch))
-                {
-                    ItemsQueryable = ItemsQueryable.Where(GlobalSearchQuery(GlobalSearch));
-                }
-
-                TotalCount = ItemsQueryable.Count();
-
-                var sortColumn = Columns.Find(x => x.SortColumn);
-
-                if (sortColumn != null)
-                {
-                    if (sortColumn.SortDescending)
-                    {
-                        ItemsQueryable = ItemsQueryable.OrderByDescending(sortColumn.Field);
-                    }
-                    else
-                    {
-                        ItemsQueryable = ItemsQueryable.OrderBy(sortColumn.Field);
-                    }
-                }
-
-                // if the current page is filtered out, we should go back to a page that exists
-                if (PageNumber > TotalPages)
-                {
-                    PageNumber = TotalPages - 1;
-                }
-
-                // if PageSize is zero, we return all rows and no paging
-                if (PageSize <= 0)
-                    return ItemsQueryable.ToList();
-                else
-                    return ItemsQueryable.Skip(PageNumber * PageSize).Take(PageSize).ToList();
+                return Items;
+            }
+            if (Items != null)
+            {
+                ItemsQueryable = Items.AsQueryable();
             }
 
-            return Items;
+            foreach (var item in Columns)
+            {
+                if (item.Filter != null)
+                {
+                    ItemsQueryable = ItemsQueryable.Where(item.Filter);
+                }
+            }
+
+            if (DataLoader != null)
+            {
+                return ItemsQueryable.ToList();
+            }
+            // Global Search
+            if (!string.IsNullOrEmpty(GlobalSearch))
+            {
+                ItemsQueryable = ItemsQueryable.Where(GlobalSearchQuery(GlobalSearch));
+            }
+
+            TotalCount = ItemsQueryable.Count();
+
+            var sortColumn = Columns.Find(x => x.SortColumn);
+
+            if (sortColumn != null)
+            {
+                ItemsQueryable = sortColumn.SortDescending ?
+                    ItemsQueryable.OrderByDescending(sortColumn.Field) :
+                    ItemsQueryable.OrderBy(sortColumn.Field);
+            }
+
+            // if the current page is filtered out, we should go back to a page that exists
+            if (PageNumber > TotalPages)
+            {
+                PageNumber = TotalPages - 1;
+            }
+
+            // if PageSize is zero, we return all rows and no paging
+            return PageSize <= 0 ? ItemsQueryable.ToList() : ItemsQueryable.Skip(PageNumber * PageSize).Take(PageSize).ToList();
         }
 
-        private bool[] detailsViewOpen;
+        private Dictionary<int, bool> detailsViewOpen = new Dictionary<int, bool>();
+
+        /// <summary>
+        /// Open/Close detail view in specified row.
+        /// </summary>
+        /// <param name="row">number of row to toggle detail view</param>
+        /// <param name="open">true for openening detail view, false for closing detail view</param>
+        public void ToggleDetailView(int row, bool open)
+        {
+            if (!detailsViewOpen.ContainsKey(row))
+                throw new KeyNotFoundException("Specified row could not be found in the currently rendered part of the table.");
+
+            detailsViewOpen[row] = open;
+        }
+
+        /// <summary>
+        /// Open/Close all detail views.
+        /// </summary>
+        /// <param name="open">true for openening detail view, false for closing detail view</param>
+        public void ToggleAllDetailsView(bool open)
+        {
+            int[] rows = new int[detailsViewOpen.Keys.Count];
+            detailsViewOpen.Keys.CopyTo(rows, 0);
+            foreach (int row in rows)
+            {
+                detailsViewOpen[row] = open;
+            }
+        }
 
         /// <summary>
         /// Gets Data and redraws the Table
         /// </summary>
-        public void Update()
+        public async Task UpdateAsync()
         {
-            detailsViewOpen = new bool[PageSize];
+            await LoadServerSideDataAsync().ConfigureAwait(false);
             FilteredItems = GetData();
             Refresh();
+        }
+
+        private async Task LoadServerSideDataAsync()
+        {
+            if (DataLoader != null)
+            {
+                var sortColumn = Columns.Find(x => x.SortColumn);
+                var sortExpression = new StringBuilder();
+                if (sortColumn != null)
+                {
+                    sortExpression
+                        .Append(sortColumn.Field.GetPropertyMemberInfo()?.Name)
+                        .Append(' ')
+                        .Append(sortColumn.SortDescending ? "desc" : "asc");
+                }
+
+                var result = await DataLoader.LoadDataAsync(new FilterData
+                {
+                    Top = PageSize,
+                    Skip = PageNumber * PageSize,
+                    Query = GlobalSearch,
+                    OrderBy = sortExpression.ToString()
+                }).ConfigureAwait(false);
+                Items = result.Records;
+                TotalCount = result.Total.GetValueOrDefault(1);
+            }
         }
 
         /// <summary>
@@ -207,46 +290,50 @@ namespace BlazorTable
         /// <summary>
         /// Go to First Page
         /// </summary>
-        public void FirstPage()
+        public async Task FirstPageAsync()
         {
             if (PageNumber != 0)
             {
                 PageNumber = 0;
-                Update();
+                detailsViewOpen.Clear();
+                await UpdateAsync().ConfigureAwait(false);
             }
         }
 
         /// <summary>
         /// Go to Next Page
         /// </summary>
-        public void NextPage()
+        public async Task NextPageAsync()
         {
             if (PageNumber + 1 < TotalPages)
             {
                 PageNumber++;
-                Update();
+                detailsViewOpen.Clear();
+                await UpdateAsync().ConfigureAwait(false);
             }
         }
 
         /// <summary>
         /// Go to Previous Page
         /// </summary>
-        public void PreviousPage()
+        public async Task PreviousPageAsync()
         {
             if (PageNumber > 0)
             {
                 PageNumber--;
-                Update();
+                detailsViewOpen.Clear();
+                await UpdateAsync().ConfigureAwait(false);
             }
         }
 
         /// <summary>
         /// Go to Last Page
         /// </summary>
-        public void LastPage()
+        public async Task LastPageAsync()
         {
             PageNumber = TotalPages - 1;
-            Update();
+            detailsViewOpen.Clear();
+            await UpdateAsync().ConfigureAwait(false);
         }
 
         /// <summary>
@@ -263,7 +350,7 @@ namespace BlazorTable
         /// </summary>
         public void Refresh()
         {
-            StateHasChanged();
+            InvokeAsync(StateHasChanged);
         }
 
         /// <summary>
@@ -286,13 +373,16 @@ namespace BlazorTable
         /// <param name="column"></param>
         private void HandleDrop(IColumn<TableItem> column)
         {
-            int index = Columns.FindIndex(a => a == column);
+            if (DragSource != null)
+            {
+                int index = Columns.FindIndex(a => a == column);
 
-            Columns.Remove(DragSource);
+                Columns.Remove(DragSource);
+                Columns.Insert(index, DragSource);
+                DragSource = null;
 
-            Columns.Insert(index, DragSource);
-
-            StateHasChanged();
+                StateHasChanged();
+            }
         }
 
         /// <summary>
@@ -302,18 +392,8 @@ namespace BlazorTable
         /// <returns></returns>
         private string RowClass(TableItem item)
         {
-            if (TableRowClass == null) return null;
-
-            if (_tableRowClassCompiled == null)
-                _tableRowClassCompiled = TableRowClass.Compile();
-
-            return _tableRowClassCompiled.Invoke(item);
+            return TableRowClass?.Invoke(item);
         }
-
-        /// <summary>
-        /// Save compiled TableRowClass property to avoid repeated Compile() calls
-        /// </summary>
-        private Func<TableItem, string> _tableRowClassCompiled;
 
         /// <summary>
         /// Set the template to use for empty data
@@ -325,7 +405,7 @@ namespace BlazorTable
         }
 
         private RenderFragment _emptyDataTemplate;
-        
+
         /// <summary>
         /// Set the template to use for loading data
         /// </summary>
@@ -363,7 +443,8 @@ namespace BlazorTable
                 if (_selectionType == SelectionType.None)
                 {
                     SelectedItems.Clear();
-                } else if (_selectionType == SelectionType.Single && SelectedItems.Count > 1)
+                }
+                else if (_selectionType == SelectionType.Single && SelectedItems.Count > 1)
                 {
                     SelectedItems.RemoveRange(1, SelectedItems.Count - 1);
                 }
@@ -415,6 +496,15 @@ namespace BlazorTable
             }
         }
 
+        /// <summary>
+        /// Add custom row to current table
+        /// </summary>
+        /// <param name="customRow">custom row to add</param>
+        public void AddCustomRow(CustomRow<TableItem> customRow)
+        {
+            CustomRows.Add(customRow);
+        }
+
         private Expression<Func<TableItem, bool>> GlobalSearchQuery(string value)
         {
             Expression<Func<TableItem, bool>> expression = null;
@@ -423,11 +513,11 @@ namespace BlazorTable
             {
                 Expression<Func<TableItem, bool>> tmp = null;
 
-                foreach (var column in Columns)
+                foreach (var column in Columns.Where(x => x.Field != null))
                 {
                     var newQuery = Expression.Lambda<Func<TableItem, bool>>(
                         Expression.AndAlso(
-                            Expression.NotEqual(column.Field.Body, Expression.Constant(null)),
+                            column.Field.Body.CreateNullChecks(),
                             Expression.GreaterThanOrEqual(
                                 Expression.Call(
                                     Expression.Call(column.Field.Body, "ToString", Type.EmptyTypes),
@@ -456,5 +546,28 @@ namespace BlazorTable
         /// </summary>
         [Parameter]
         public bool ShowSearchBar { get; set; }
+
+        /// <summary>
+        /// Show or hide table footer. Hide by default.
+        /// </summary>
+        [Parameter]
+        public bool ShowFooter { get; set; }
+
+        /// <summary>
+        /// Set Table Page Size
+        /// </summary>
+        /// <param name="pageSize"></param>
+        public async Task SetPageSizeAsync(int pageSize)
+        {
+            PageSize = pageSize;
+            await UpdateAsync().ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Show table child content at the top of the table.
+        /// </summary>
+        [Parameter]
+        public bool ShowChildContentAtTop { get; set; }
+
     }
 }

@@ -3,8 +3,6 @@
 [![Nuget (with prereleases)](https://img.shields.io/nuget/vpre/BlazorTable.svg?style=flat-square)](https://www.nuget.org/packages/BlazorTable)
 [![Nuget (with prereleases)](https://img.shields.io/nuget/dt/BlazorTable.svg?style=flat-square)](https://www.nuget.org/packages/BlazorTable)
 ![](https://github.com/IvanJosipovic/BlazorTable/workflows/CI/CD/badge.svg)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=IvanJosipovic_BlazorTable&metric=alert_status)](https://sonarcloud.io/dashboard?id=IvanJosipovic_BlazorTable)
-
 
 Blazor Table Component with Sorting, Paging and Filtering
 
@@ -16,6 +14,10 @@ Blazor Table Component with Sorting, Paging and Filtering
   - dotnet add package BlazorTable
 - Add to the index.html or _Hosts.cshtml
   - `<script src="_content/BlazorTable/BlazorTable.min.js"></script>`
+- Add call to Program.cs or Startup.cs
+  - Services.AddBlazorTable();
+
+Note: If installing `BlazorTable` in a hosted Blazor WASM application, these steps should be performed in the [WASM Client](https://docs.microsoft.com/en-us/aspnet/core/blazor/hosting-models?view=aspnetcore-5.0#blazor-webassembly-1) project.
 
 ## Features
 - Column Reordering
