@@ -175,11 +175,11 @@
                                     @if (detailViewActive)
                                     {
                                         <td>
-                                            <a href="javascript:;" style="text-decoration: none" @onclick="@(() => { detailsViewOpen[locali] = !detailsViewOpen[locali]; StateHasChanged(); })" title="@Localization["TableDetailsView"]" aria-expanded="@(detailsViewOpen[locali] ? "true" : "false")">
+                                            <a href="javascript:;" style="text-decoration: none; color: black" @onclick="@(() => { detailsViewOpen[locali] = !detailsViewOpen[locali]; StateHasChanged(); })" title="@Localization["TableDetailsView"]" aria-expanded="@(detailsViewOpen[locali] ? "true" : "false")">
                                                 @if (detailsViewOpen[locali])
-                                                {<span aria-hidden="true"><img src="_content/BlazorTable/images/minus.png" /></span>}
+                                                {<span aria-hidden="true"><i class="fas fa-caret-down"></i></span>}
                                                 else
-                                                {<span aria-hidden="true"><img src="_content/BlazorTable/images/plus.png" /></span>}
+                                                {<span aria-hidden="true"><i class="fas fa-caret-right"></i></span>}
                                             </a>
                                         </td>
                                     }
@@ -192,8 +192,9 @@
                                                 style="@(column.Align > 0 ? $"text-align: {column.Align};" : "")"
                                                 class="@(column.Class)">
 
-                                                @if (IsEditMode && column.EditTemplate != null)
+                                                @if (IsEditMode && column.EditTemplate != null) {
                                                     @column.EditTemplate(item)
+                                                }
                                                     else if (column.Template == null)
                                                         @column.Render(item)
                                                         else
