@@ -549,6 +549,12 @@ namespace BlazorTable
         public bool ShowSearchBar { get; set; }
 
         /// <summary>
+        /// Show or hide table header. Show by default.
+        /// </summary>
+        [Parameter]
+        public bool ShowHeader { get; set; } = true;
+        
+        /// <summary>
         /// Show or hide table footer. Hide by default.
         /// </summary>
         [Parameter]

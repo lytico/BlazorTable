@@ -35,7 +35,7 @@ namespace BlazorTable
         /// <summary>
         /// Is Table in Edit mode
         /// </summary>
-        bool IsEditMode { get; }
+        bool IsEditMode { get; set; }
 
 
         /// <summary>
@@ -133,6 +133,11 @@ namespace BlazorTable
         /// </summary>
         bool ShowFooter { get; set; }
       
+        /// <summary>
+        /// Show or hide table header. Show by default.
+        /// </summary>
+        bool ShowHeader { get; set; }
+        
         /// <summary>
         /// Set Table Page Size
         /// </summary>
